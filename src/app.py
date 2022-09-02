@@ -26,11 +26,10 @@ Options:
 from docopt import docopt
 import grpc
 
-import client.api.submitter_service_pb2_grpc as sub
-import client.api.submitter_common_pb2 as subc
-import client.api.objects_pb2 as obj
-import client.api.session_status_pb2 as sessionStatus
-from client.api.task_status_pb2 import TASK_STATUS_CREATING
+import armonik.client.submitter_service_pb2_grpc as sub
+import armonik.common.objects_pb2 as obj
+import armonik.common.session_status_pb2 as sessionStatus
+from armonik.common.task_status_pb2 import TASK_STATUS_CREATING
 
 def create_channel(arguments):
     if(arguments["--ca"] != None and arguments["--cert"] != None and arguments["--key"] != None):
@@ -43,20 +42,20 @@ def create_channel(arguments):
         return grpc.insecure_channel(arguments["--endpoint"])
 
 def __list_sessions(client, status):
-    return client.ListSessions(subc.SessionFilter(included=subc.SessionFilter.StatusesRequest(statuses=[status])))
+    return client.ListSessions(sub.SessionFilter(included=sub.SessionFilter.StatusesRequest(statuses=[status])))
 
 def __list_tasks(client, sessions, status):
     if(status == None):
-        return client.ListTasks(subc.TaskFilter(session=subc.TaskFilter.IdsRequest(ids=sessions)))
+        return client.ListTasks(sub.TaskFilter(session=sub.TaskFilter.IdsRequest(ids=sessions)))
     else:
-        return client.ListTasks(subc.TaskFilter(session=subc.TaskFilter.IdsRequest(ids=sessions), included=subc.TaskFilter.StatusesRequest(statuses=[status])))
+        return client.ListTasks(sub.TaskFilter(session=sub.TaskFilter.IdsRequest(ids=sessions), included=sub.TaskFilter.StatusesRequest(statuses=[status])))
 
 def __cancel_sessions(client, sessions):
     for s in sessions:
         client.CancelSession(obj.Session(id=s))
 
 def __cancel_tasks_ids(client, tasks):
-    client.CancelTasks(subc.TaskFilter(tasks=subc.TaskFilter.IdsRequest(ids=tasks)))
+    client.CancelTasks(sub.TaskFilter(tasks=sub.TaskFilter.IdsRequest(ids=tasks)))
 
 def list_sessions(client, all, running, cancelled):
     if(all or running):
