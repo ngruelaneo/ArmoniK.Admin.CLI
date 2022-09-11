@@ -32,6 +32,7 @@ import armonik.common.objects_pb2 as obj
 import armonik.common.session_status_pb2 as sessionStatus
 from armonik.common.task_status_pb2 import TASK_STATUS_CREATING
 
+
 def create_channel(arguments):
     if(arguments["--ca"] != None and arguments["--cert"] != None and arguments["--key"] != None):
         ca = open(arguments["--ca"], 'rb').read()
@@ -75,6 +76,7 @@ def list_sessions(client, all, running, cancelled):
             print("unspecified sessions :")
             print(l)
 
+
 def list_tasks(client, sessions, all, creating):
     if(all or creating):
         l = __list_tasks(client, sessions, TASK_STATUS_CREATING)
@@ -87,9 +89,9 @@ def list_tasks(client, sessions, all, creating):
             print("all tasks :")
             print(l)
 
-if __name__ == '__main__':
-    arguments = docopt(__doc__, version='ArmoniK Admin CLI 0.0.1')
-    print(arguments)
+
+def main():
+    arguments = docopt(__doc__, version="ArmoniK Admin CLI  0.0.1")
     client = sub.SubmitterStub(create_channel(arguments))
 
     if(arguments["list-session"]):
@@ -109,3 +111,5 @@ if __name__ == '__main__':
             if(len(l.session_ids) > 0):
                 __cancel_sessions(client, l.session_ids)
 
+if __name__ == '__main__':
+    main()

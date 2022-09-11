@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "armonik_cli"
+description = "A CLI to administrate ArmoniK orchestrator"
+readme = "README.md"
+requires-python = ">=3.7"
+keywords = ["cloud", "HTC"]
+license = {file = "LICENSE"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "armonik",
+    "docopt"
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/aneoconsulting/ArmoniK.Admin.CLI"
+"Bug Tracker" = "https://github.com/aneoconsulting/ArmoniK/issues"
+
+[project.scripts]
+armonik_admin_cli = "armonik_cli.admin:main"
+
+[tool.setuptools_scm]
+write_to = "pkg/_version.py"
+
+[tool.setuptools.packages.find]
+where= ["src"]
+
