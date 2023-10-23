@@ -30,7 +30,8 @@ from docopt import docopt
 import grpc
 from armonik.client.sessions import ArmoniKSessions, SessionFieldFilter
 from armonik.client.tasks import ArmoniKTasks, TaskFieldFilter
-from armonik.common.enumwrapper import TASK_STATUS_ERROR, TASK_STATUS_COMPLETED, TASK_STATUS_CREATING , SESSION_STATUS_RUNNING, SESSION_STATUS_CANCELLED, SESSION_STATUS_UNSPECIFIED
+from armonik.common.enumwrapper import TASK_STATUS_ERROR, TASK_STATUS_CREATING , SESSION_STATUS_RUNNING, SESSION_STATUS_CANCELLED, SESSION_STATUS_UNSPECIFIED
+from armonik.common.filter import Filter
 
 def create_channel(arguments):
     """
@@ -52,17 +53,17 @@ def create_channel(arguments):
         return grpc.insecure_channel(arguments["--endpoint"])
 
 
-def list_sessions(client: ArmoniKSessions, all: bool, running: bool, cancelled: bool):
+def create_session_filter(all: bool, running: bool, cancelled: bool) -> Filter:
     """
-    List sessions with filter options
+    Create a session Filter
 
     Args:
-        client (ArmoniKSessions): ArmoniKSessions instance for session management
         all (bool): Show all sessions
         running (bool): Show only running sessions
         cancelled (bool): Show only cancelled sessions
+    Returns:
+        Filter object
     """
-
     if all:
         session_filter = (SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING) | (SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED)
     elif running:
@@ -70,19 +71,29 @@ def list_sessions(client: ArmoniKSessions, all: bool, running: bool, cancelled: 
     elif cancelled:
         session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED
     else:
-        print("SELECT ARGUMENT [--all | --running | --cancelled]")
-        return
-    
+        session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_UNSPECIFIED
+        print("\nSELECT ARGUMENT [--all | --running | --cancelled]")
+    return session_filter
+
+
+def list_sessions(client: ArmoniKSessions, session_filter: Filter):
+    """
+    List sessions with filter options
+
+    Args:
+        client (ArmoniKSessions): ArmoniKSessions instance for session management
+        session_filter (Filter) : Filter for the session
+    """
     page = 0
-    while True:
-        number_sessions, sessions = client.list_sessions(session_filter, page=page)
-        if len(sessions) == 0:
-            break
-        for session in sessions:
+    sessions = client.list_sessions(session_filter, page=page)
+    
+    while len(sessions[1]) > 0:
+        for session in sessions[1]:
             print(f'Session ID: {session.session_id}')
         page += 1
+        sessions = client.list_sessions(session_filter, page=page)
 
-    print(f'\nNumber of sessions: {number_sessions}\n')
+    print(f'\nNumber of sessions: {sessions[0]}\n')
 
 
 
@@ -111,26 +122,25 @@ def list_tasks(client: ArmoniKTasks, session_ids: list, all: bool, creating: boo
     """
     for session_id in session_ids:
 
-        page = 0
-        while True:
-            if all:
-                tasks_filter = TaskFieldFilter.SESSION_ID == session_id
-            elif creating:
-                tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_CREATING)
-            elif error:
-                tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_ERROR)
-            else:
-                print("SELECT ARGUMENT [--all | --creating | --error]")
-                return
+        if all:
+            tasks_filter = TaskFieldFilter.SESSION_ID == session_id
+        elif creating:
+            tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_CREATING)
+        elif error:
+            tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_ERROR)
+        else:
+            print("SELECT ARGUMENT [--all | --creating | --error]")
+            return
 
-            nb_tasks, task_list = client.list_tasks(tasks_filter, page=page)
-            if len(task_list) == 0:
-                break
-            for task in task_list:
+        page = 0
+        tasks = client.list_tasks(tasks_filter, page=page)
+        while len(tasks[1]) > 0:
+            for task in tasks[1]:
                 print(f'Task ID: {task.id}')
             page += 1
-        
-        print(f"\nTotal tasks: {nb_tasks}\n")
+            tasks = client.list_tasks(tasks_filter, page=page)
+
+        print(f"\nTotal tasks: {tasks[0]}\n")
 
 def check_task(client: ArmoniKTasks, task_id: str):
     """
@@ -140,22 +150,23 @@ def check_task(client: ArmoniKTasks, task_id: str):
         client (ArmoniKTasks): ArmoniKTasks instance for task management.
         task_id (str): ID of the task to check.
     """
-    _, task_list = client.list_tasks(TaskFieldFilter.TASK_ID == task_id)
-    if len(task_list) > 0:
+    tasks = client.list_tasks(TaskFieldFilter.TASK_ID == task_id)
+    if len(tasks[1]) > 0:
         print(f"\nTask information for task ID {task_id} :\n")
-        print(task_list)
+        print(tasks[1])
     else:
         print(f"No task found with ID {task_id}")
 
 
 def main():
     arguments = docopt(__doc__, version="ArmoniK Admin CLI  0.0.1")
+
     grpc_channel = create_channel(arguments)
     session_client = ArmoniKSessions(grpc_channel)
     task_client = ArmoniKTasks(grpc_channel)
 
     if arguments['list-session']:
-        list_sessions(session_client, arguments["--all"], arguments["--running"], arguments["--cancelled"])
+        list_sessions(session_client, create_session_filter(arguments["--all"], arguments["--running"], arguments["--cancelled"]))
 
     if arguments['list-task']:
         session_ids = arguments["<session>"]
