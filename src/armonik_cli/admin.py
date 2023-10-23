@@ -6,7 +6,6 @@ Usage:
   armonik.py cancel-task <task>...            [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE]
   armonik.py list-task <session>...           [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE] [--all | --creating | --error]
   armonik.py list-session                     [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE] [--all | --running | --cancelled]
-  armonik.py list-result                      [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE] [--all]
   armonik.py (-h | --help)
   armonik.py --version
   armonik.py check-task <taskid>
@@ -29,12 +28,9 @@ Options:
 
 from docopt import docopt
 import grpc
-import math
 from armonik.client.sessions import ArmoniKSessions, SessionFieldFilter
 from armonik.client.tasks import ArmoniKTasks, TaskFieldFilter
-from armonik.client.results import ArmoniKResult, ResultFieldFilter
-from armonik.common.enumwrapper import TASK_STATUS_ERROR, TASK_STATUS_COMPLETED, TASK_STATUS_CREATING , SESSION_STATUS_RUNNING, SESSION_STATUS_CANCELLED, SESSION_STATUS_UNSPECIFIED, RESULT_STATUS_ABORTED, RESULT_STATUS_COMPLETED, RESULT_STATUS_CREATED, RESULT_STATUS_NOTFOUND, RESULT_STATUS_UNSPECIFIED
-
+from armonik.common.enumwrapper import TASK_STATUS_ERROR, TASK_STATUS_COMPLETED, TASK_STATUS_CREATING , SESSION_STATUS_RUNNING, SESSION_STATUS_CANCELLED, SESSION_STATUS_UNSPECIFIED
 
 def create_channel(arguments):
     """
@@ -66,7 +62,6 @@ def list_sessions(client: ArmoniKSessions, all: bool, running: bool, cancelled: 
         running (bool): Show only running sessions
         cancelled (bool): Show only cancelled sessions
     """
-    session_filter = None
 
     if all:
         session_filter = (SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING) | (SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED)
@@ -77,17 +72,14 @@ def list_sessions(client: ArmoniKSessions, all: bool, running: bool, cancelled: 
     else:
         print("SELECT ARGUMENT [--all | --running | --cancelled]")
         return
-
+    
     page = 0
     while True:
         number_sessions, sessions = client.list_sessions(session_filter, page=page)
-
         if len(sessions) == 0:
             break
-
         for session in sessions:
             print(f'Session ID: {session.session_id}')
-        
         page += 1
 
     print(f'\nNumber of sessions: {number_sessions}\n')
@@ -102,9 +94,8 @@ def cancel_sessions(client: ArmoniKSessions, sessions: list):
         client (ArmoniKSessions): Instance of the class with cancel_session method
         sessions (list): List of session IDs to cancel
     """
-    if sessions:
-        for session_id in sessions:
-            client.cancel_session(session_id)
+    for session_id in sessions:
+        client.cancel_session(session_id)
 
 
 def list_tasks(client: ArmoniKTasks, session_ids: list, all: bool, creating: bool , error: bool):
@@ -119,6 +110,7 @@ def list_tasks(client: ArmoniKTasks, session_ids: list, all: bool, creating: boo
         error (bool): List only tasks in error status
     """
     for session_id in session_ids:
+
         page = 0
         while True:
             if all:
@@ -132,13 +124,10 @@ def list_tasks(client: ArmoniKTasks, session_ids: list, all: bool, creating: boo
                 return
 
             nb_tasks, task_list = client.list_tasks(tasks_filter, page=page)
-
             if len(task_list) == 0:
                 break
-
             for task in task_list:
                 print(f'Task ID: {task.id}')
-            
             page += 1
         
         print(f"\nTotal tasks: {nb_tasks}\n")
@@ -164,7 +153,6 @@ def main():
     grpc_channel = create_channel(arguments)
     session_client = ArmoniKSessions(grpc_channel)
     task_client = ArmoniKTasks(grpc_channel)
-    result_client = ArmoniKResult(grpc_channel)
 
     if arguments['list-session']:
         list_sessions(session_client, arguments["--all"], arguments["--running"], arguments["--cancelled"])
@@ -185,11 +173,5 @@ def main():
             session_ids = [session.session_id for session in session_list]
             cancel_sessions(session_client, session_ids)
     
-    if arguments['list-result']:
-        number_results, results = result_client.list_results(ResultFieldFilter.STATUS == RESULT_STATUS_COMPLETED)
-        print(f'Number of results: {number_results}\nResults: {[result.result_id for result in results]}')
-        for result in results:
-            print(f"Result ID: {result.result_id}")
-
 if __name__ == '__main__':
     main()
