@@ -71,8 +71,8 @@ def create_session_filter(all: bool, running: bool, cancelled: bool) -> Filter:
     elif cancelled:
         session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED
     else:
-        session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_UNSPECIFIED
-        print("\nSELECT ARGUMENT [--all | --running | --cancelled]")
+         raise ValueError("SELECT ARGUMENT [--all | --running | --cancelled]")
+
     return session_filter
 
 
@@ -129,8 +129,7 @@ def create_task_filter(session_ids: list, all: bool , creating: bool, error: boo
         elif error:
             tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_ERROR)
         else:
-            print("SELECT ARGUMENT [--all | --creating | --error]")
-            return None
+             raise ValueError("SELECT ARGUMENT [--all | --creating | --error]")
 
         return tasks_filter
     
