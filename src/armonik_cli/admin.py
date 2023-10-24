@@ -96,7 +96,6 @@ def list_sessions(client: ArmoniKSessions, session_filter: Filter):
     print(f'\nNumber of sessions: {sessions[0]}\n')
 
 
-
 def cancel_sessions(client: ArmoniKSessions, sessions: list):
     """
     Cancel sessions with a list of session IDs or all sessions running
@@ -109,19 +108,20 @@ def cancel_sessions(client: ArmoniKSessions, sessions: list):
         client.cancel_session(session_id)
 
 
-def list_tasks(client: ArmoniKTasks, session_ids: list, all: bool, creating: bool , error: bool):
+def create_task_filter(session_ids: list, all: bool , creating: bool, error: bool) -> Filter:
     """
-    List tasks associated with the specified sessions based on filter options
+    Create a task Filter based on the provided options
 
     Args:
-        client (ArmoniKTasks): ArmoniKTasks instance for task management
-        session_ids (list): List of session IDs to filter tasks
+        session_id (str): Session ID to filter tasks
         all (bool): List all tasks regardless of status
         creating (bool): List only tasks in creating status
         error (bool): List only tasks in error status
+
+    Returns:
+        Filter object
     """
     for session_id in session_ids:
-
         if all:
             tasks_filter = TaskFieldFilter.SESSION_ID == session_id
         elif creating:
@@ -130,17 +130,29 @@ def list_tasks(client: ArmoniKTasks, session_ids: list, all: bool, creating: boo
             tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_ERROR)
         else:
             print("SELECT ARGUMENT [--all | --creating | --error]")
-            return
+            return None
 
-        page = 0
-        tasks = client.list_tasks(tasks_filter, page=page)
-        while len(tasks[1]) > 0:
-            for task in tasks[1]:
-                print(f'Task ID: {task.id}')
-            page += 1
-            tasks = client.list_tasks(tasks_filter, page=page)
+        return tasks_filter
+    
 
-        print(f"\nTotal tasks: {tasks[0]}\n")
+def list_tasks(client: ArmoniKTasks, task_filter: Filter):
+    """
+    List tasks associated with the specified sessions based on filter options
+
+    Args:
+        client (ArmoniKTasks): ArmoniKTasks instance for task management
+        task_filter (Filter): Filter for the task
+    """
+
+    page = 0
+    tasks = client.list_tasks(task_filter, page=page)
+    while len(tasks[1]) > 0:
+        for task in tasks[1]:
+            print(f'Task ID: {task.id}')
+        page += 1
+        tasks = client.list_tasks(task_filter, page=page)
+
+    print(f"\nTotal tasks: {tasks[0]}\n")
 
 def check_task(client: ArmoniKTasks, task_id: str):
     """
@@ -170,7 +182,7 @@ def main():
 
     if arguments['list-task']:
         session_ids = arguments["<session>"]
-        list_tasks(task_client, session_ids, arguments["--all"], arguments["--creating"], arguments["--error"])
+        list_tasks(task_client, create_task_filter(session_ids, arguments["--all"], arguments["--creating"], arguments["--error"]))
 
     if arguments['check-task']:
         task_id = arguments["<taskid>"]
