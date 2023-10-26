@@ -8,6 +8,50 @@ provide a user with a robust task scheduler for a high throughput computing appl
 The .proto files in the directory [./Protos/V1](https://github.com/aneoconsulting/ArmoniK.Api/tree/main/Protos/V1) 
 provide the core data model and functionalities for ArmoniK and are used to generate the different SDKs.
 
+## Requirements
+
+In order to install the ArmoniK CLI in an isolated environment, you must have python3-venv installed on your machine.
+
+```bash
+sudo apt install python3-venv
+```
+
+## Installation
+
+### Following steps for manual installation
+
+Clone the project from https://github.com/aneoconsulting
+
+```bash
+git clone git@github.com/aneoconsulting/ArmoniK.Admin.CLI.git
+```
+
+Navigate in the root directory
+
+```bash
+cd ArmoniK.Admin.CLI
+```
+
+Create and activate the virtual environment
+
+```bash
+python -m venv ./venv
+source ./venv/bin/activate
+```
+
+Install the build module and generate the archive and .whl file to install dependencies
+
+```bash
+pip install build
+python -m build
+```
+
+Install dependencies using the generated .whl file
+
+```bash
+pip install dist/<name_of_the_package>.whl
+```
+
 ## Documentation
 
 [Documentation](https://aneoconsulting.github.io/ArmoniK.Admin.CLI/api/index.html) (TODO)
