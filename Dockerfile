@@ -4,11 +4,11 @@ WORKDIR /src
 
 COPY . .
 
-RUN apt-get update \
-&& apt-get install -y git \
-&& pip install build \
-&& python -m build \
-&& pip install dist/*.whl
+RUN apt-get update && \
+    apt-get install -y git && \
+    pip install build && \
+    python -m build && \
+    pip install dist/*.whl
 
 CMD [ "python", "src/armonik_cli/admin.py" ]
 
