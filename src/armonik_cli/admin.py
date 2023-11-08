@@ -33,7 +33,7 @@ from armonik.client.tasks import ArmoniKTasks, TaskFieldFilter
 from armonik.common.enumwrapper import TASK_STATUS_ERROR, TASK_STATUS_CREATING , SESSION_STATUS_RUNNING, SESSION_STATUS_CANCELLED, SESSION_STATUS_UNSPECIFIED
 from armonik.common.filter import Filter
 
-def create_channel(arguments):
+def create_channel(arguments : dict):
     """
     Create a gRPC channel for communication with the ArmoniK control plane
 
@@ -53,7 +53,7 @@ def create_channel(arguments):
         return grpc.insecure_channel(arguments["--endpoint"])
 
 
-def create_session_filter(all: bool, running: bool, cancelled: bool) -> Filter:
+def create_session_filter(all: bool =False, running: bool =False, cancelled: bool =False) -> Filter:
     """
     Create a session Filter
 
@@ -191,8 +191,8 @@ def main():
         if arguments["list"]:
             cancel_sessions(session_client, arguments["<session>"])
         if arguments["--running"]:
-            _, session_list = session_client.list_sessions(SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING)
-            session_ids = [session.session_id for session in session_list]
+            sessions = session_client.list_sessions(create_session_filter(running=True))
+            session_ids = [session.session_id for session in sessions[1]]
             cancel_sessions(session_client, session_ids)
     
 if __name__ == '__main__':
