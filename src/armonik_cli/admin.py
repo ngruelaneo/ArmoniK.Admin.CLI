@@ -5,46 +5,24 @@ from armonik.client.tasks import ArmoniKTasks, TaskFieldFilter
 from armonik.common.enumwrapper import TASK_STATUS_ERROR, TASK_STATUS_CREATING , SESSION_STATUS_RUNNING, SESSION_STATUS_CANCELLED, SESSION_STATUS_UNSPECIFIED
 from armonik.common.filter import Filter
 
-def create_channel(arguments : dict):
+def create_channel(channel_config):
     """
     Create a gRPC channel for communication with the ArmoniK control plane
 
     Args:
-        arguments (dict): command-line arguments from docopt
+        channel_config: Command-line arguments namespace
 
     Returns:
         grpc.Channel: gRPC channel for communication
     """
-    if (arguments.ca != None and arguments.cert != None and arguments.key != None):
-        ca = open(arguments.ca, 'rb').read()
-        cert = open(arguments.cert, 'rb').read()
-        key = open(arguments.key, 'rb').read()
+    if (channel_config.ca != None and channel_config.cert != None and channel_config.key != None):
+        ca = open(channel_config.ca, 'rb').read()
+        cert = open(channel_config.cert, 'rb').read()
+        key = open(channel_config.key, 'rb').read()
         credentials = grpc.ssl_channel_credentials(ca, key, cert)
-        return grpc.secure_channel(arguments.endpoint, credentials)
+        return grpc.secure_channel(channel_config.endpoint, credentials)
     else:
-        return grpc.insecure_channel(arguments.endpoint)
-
-
-# def create_session_filter(all: bool = False, running: bool = False, cancelled: bool = False) -> Filter:
-#     """
-#     Create a session Filter
-#     Args:
-#         all (bool): Show all sessions
-#         running (bool): Show only running sessions
-#         cancelled (bool): Show only cancelled sessions
-#     Returns:
-#         Filter object
-#     """
-#     if all:
-#         session_filter = (SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING) | (SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED)
-#     elif running:
-#         session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING
-#     elif cancelled:
-#         session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED
-#     else:
-#          raise ValueError("SELECT ARGUMENT [--all | --running | --cancelled]")
-
-#     return session_filter
+        return grpc.insecure_channel(channel_config.endpoint)
 
 
 def list_sessions(client: ArmoniKSessions, session_filter: Filter):
@@ -171,8 +149,8 @@ def main():
     group_list_task.set_defaults(func=lambda args: list_tasks(task_client, create_task_filter(args.session_id, args.all, args.creating, args.error)))
 
     check_task_parser = subparsers.add_parser('check-task', help='Check the status of a specific task')
-    check_task_parser.add_argument("--task", nargs="+", dest="task_id", help="Select ID from TASK", required=True)
-    check_task_parser.set_defaults(func=lambda args: check_task(task_client, args.task_id[0]))
+    check_task_parser.add_argument("--task", dest="task_id", help="Select ID from TASK", required=True)
+    check_task_parser.set_defaults(func=lambda args: check_task(task_client, args.task_id))
 
 
     cancel_session_parser = subparsers.add_parser('cancel-session', help='Cancel sessions')
