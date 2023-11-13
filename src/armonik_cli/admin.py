@@ -1,31 +1,3 @@
-"""ArmoniK Admin CLI to perform admnistration tasks for ArmoniK
-
-Usage:
-  armonik.py cancel-session list <session>... [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE]
-  armonik.py cancel-session --running         [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE]
-  armonik.py cancel-task <task>...            [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE]
-  armonik.py list-task <session>...           [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE] [--all | --creating | --error]
-  armonik.py list-session                     [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE] [--all | --running | --cancelled]
-  armonik.py check-task <taskid>              [--endpoint ENDPOINT] [--ca CA_FILE] [--cert CERT_FILE] [--key KEY_FILE]
-  armonik.py (-h | --help)
-  armonik.py --version
-
-
-Options:
-  -h --help                         Show this screen.
-  --version                         Show version.
-  -e ENDPOINT --endpoint ENDPOINT   ArmoniK control plane endpoint. [default: localhost:5001]
-  --ca CA_FILE                      CA file for mutual tls
-  --cert CERT_FILE                  Certificate for mutual tls
-  --key KEY_FILE                    Private key for mutual tls
-  --all                             Select all sessions or tasks
-  --running                         Select running sessions
-  --cancelled                       Select cancelled sessions
-  --session SESSION                 Select tasks from SESSION
-  --creating                        Select creating tasks
-  --error                           Select error tasks
-"""
-
 import argparse
 import grpc
 from armonik.client.sessions import ArmoniKSessions, SessionFieldFilter
@@ -53,27 +25,27 @@ def create_channel(arguments):
         return grpc.insecure_channel(arguments.endpoint)
 
 
-def create_session_filter(all: bool, running: bool, cancelled: bool) -> Filter:
-    """
-    Create a session Filter
+# def create_session_filter(all: bool = False, running: bool = False, cancelled: bool = False) -> Filter:
+#     """
+#     Create a session Filter
 
-    Args:
-        all (bool): Show all sessions
-        running (bool): Show only running sessions
-        cancelled (bool): Show only cancelled sessions
-    Returns:
-        Filter object
-    """
-    if all:
-        session_filter = (SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING) | (SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED)
-    elif running:
-        session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING
-    elif cancelled:
-        session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED
-    else:
-         raise ValueError("SELECT ARGUMENT [--all | --running | --cancelled]")
+#     Args:
+#         all (bool): Show all sessions
+#         running (bool): Show only running sessions
+#         cancelled (bool): Show only cancelled sessions
+#     Returns:
+#         Filter object
+#     """
+#     if all:
+#         session_filter = (SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING) | (SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED)
+#     elif running:
+#         session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING
+#     elif cancelled:
+#         session_filter = SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED
+#     else:
+#          raise ValueError("SELECT ARGUMENT [--all | --running | --cancelled]")
 
-    return session_filter
+#     return session_filter
 
 
 def list_sessions(client: ArmoniKSessions, session_filter: Filter):
@@ -169,74 +141,52 @@ def check_task(client: ArmoniKTasks, task_id: str):
         print(f"No task found with ID {task_id}")
 
 
+
 def main():
+
     parser = argparse.ArgumentParser(description="ArmoniK Admin CLI to perform administration tasks for ArmoniK")
-    
     parser.add_argument("-v","--version", action="version", version="ArmoniK Admin CLI 0.0.1")
-
-    subparsers = parser.add_subparsers(dest='command')
-
     parser.add_argument("--endpoint", default="localhost:5001", help="ArmoniK control plane endpoint")
     parser.add_argument("--ca", help="CA file for mutual TLS")
     parser.add_argument("--cert", help="Certificate for mutual TLS")
     parser.add_argument("--key", help="Private key for mutual TLS")
+    parser.set_defaults(func=lambda _: parser.print_help())
+
+    subparsers = parser.add_subparsers()
 
     list_session_parser = subparsers.add_parser('list-session', help='List sessions with specific filters')
-    list_session_parser.add_argument("--all", action="store_true", help="Select all sessions")
-    list_session_parser.add_argument("--running", action="store_true", help="Select running sessions")
-    list_session_parser.add_argument("--cancelled", action="store_true", help="Select cancelled sessions")
-
+    group_list_session = list_session_parser.add_mutually_exclusive_group(required=True)
+    group_list_session.add_argument("--all", dest="filter", action="store_const", const=(SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING) | (SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED) , help="Select all sessions")
+    group_list_session.add_argument("--running", dest="filter", action="store_const", const=SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING, help="Select running sessions")
+    group_list_session.add_argument("--cancelled", dest="filter", action="store_const", const=SessionFieldFilter.STATUS == SESSION_STATUS_CANCELLED, help="Select cancelled sessions")
+    group_list_session.set_defaults(func=lambda args: list_sessions(session_client, args.filter))
+ 
+    
     list_task_parser = subparsers.add_parser('list-task', help='List tasks with specific filters')
-    list_task_parser.add_argument("--session", nargs="+", help="Select ID from SESSION", required=True)
-    list_task_parser.add_argument("--all", action="store_true", help="Select all tasks")
-    list_task_parser.add_argument("--creating", action="store_true", help="Select creating tasks")
-    list_task_parser.add_argument("--error", action="store_true", help="Select error tasks")
+    list_task_parser.add_argument("--session", dest="session_id", nargs="+", help="Select ID from SESSION", required=True)
+
+    group_list_task = list_task_parser.add_mutually_exclusive_group(required=True)
+    group_list_task.add_argument("--all", dest="all", action="store_true", help="Select all tasks")
+    group_list_task.add_argument("--creating", dest="creating", action="store_true", help="Select creating tasks")
+    group_list_task.add_argument("--error", dest="error", action="store_true", help="Select error tasks")
+    group_list_task.set_defaults(func=lambda args: list_tasks(task_client, create_task_filter(args.session_id, args.all, args.creating, args.error)))
 
     check_task_parser = subparsers.add_parser('check-task', help='Check the status of a specific task')
-    check_task_parser.add_argument("--task", nargs="+", help="Select ID from TASK")
+    check_task_parser.add_argument("--task", nargs="+", dest="task_id", help="Select ID from TASK", required=True)
+    check_task_parser.set_defaults(func=lambda args: check_task(task_client, args.task_id[0]))
+
 
     cancel_session_parser = subparsers.add_parser('cancel-session', help='Cancel sessions')
-    cancel_session_parser.add_argument("--session", nargs="+", help="Session IDs to cancel")
-    cancel_session_parser.add_argument("--running", action="store_true", help="Select running sessions")
+    group_cancel_session = cancel_session_parser.add_mutually_exclusive_group(required=True)
+    group_cancel_session.add_argument("--session", dest="session_id", nargs="+", help="Session IDs to cancel")
+    group_cancel_session.set_defaults(func=lambda args: cancel_sessions(session_client, args.session_id))
 
     args = parser.parse_args()
-    print(args)
-
     grpc_channel = create_channel(args)
-    session_client = ArmoniKSessions(grpc_channel)
     task_client = ArmoniKTasks(grpc_channel)
+    session_client = ArmoniKSessions(grpc_channel)
+    args.func(args)
 
-    if args.command == 'list-session':
-        if (args.all or args.running or args.cancelled):
-            list_sessions(session_client, create_session_filter(args.all, args.running, args.cancelled))
-        else:
-            list_session_parser.print_help()
-
-    if args.command == 'list-task':
-        if args.session:
-            session_ids = args.session
-            if (args.all or args.creating or args.error):
-                list_tasks(task_client, create_task_filter(session_ids, args.all, args.creating, args.error))
-            else:
-                list_task_parser.print_help()
-
-
-    if args.command == 'check-task':
-        if args.task:
-            for task in args.task:
-                check_task(task_client, task)
-        else:
-            check_task_parser.print_help()
-    
-    if args.command == "cancel-session":
-        if args.session:
-            cancel_sessions(session_client, args.session)
-        elif args.running:
-            sessions = session_client.list_sessions(SessionFieldFilter.STATUS == SESSION_STATUS_RUNNING)
-            session_ids = [session.session_id for session in sessions[1]]
-            cancel_sessions(session_client, session_ids)
-        else:
-            parser.print_help()
-            
+       
 if __name__ == '__main__':
     main()
