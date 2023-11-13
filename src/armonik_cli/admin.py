@@ -105,7 +105,11 @@ def cancel_sessions(client: ArmoniKSessions, sessions: list):
         sessions (list): List of session IDs to cancel
     """
     for session_id in sessions:
-        client.cancel_session(session_id)
+        try:
+            client.cancel_session(session_id)
+            print(f"Session {session_id} canceled successfully")
+        except grpc._channel._InactiveRpcError as error:
+                print(f"Error for canceling session {session_id}: {error.details()}")
 
 
 def create_task_filter(session_ids: list, all: bool , creating: bool, error: bool) -> Filter:
