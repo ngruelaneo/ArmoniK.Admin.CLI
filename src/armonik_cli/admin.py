@@ -106,7 +106,7 @@ def list_tasks(client: ArmoniKTasks, task_filter: Filter):
 
     print(f"\nTotal tasks: {tasks[0]}\n")
 
-def check_task(client: ArmoniKTasks, task_id: str):
+def check_task(client: ArmoniKTasks, task_ids: list):
     """
     Check the status of a task based on its ID.
 
@@ -114,12 +114,13 @@ def check_task(client: ArmoniKTasks, task_id: str):
         client (ArmoniKTasks): ArmoniKTasks instance for task management.
         task_id (str): ID of the task to check.
     """
-    tasks = client.list_tasks(TaskFieldFilter.TASK_ID == task_id)
-    if len(tasks[1]) > 0:
-        print(f"\nTask information for task ID {task_id} :\n")
-        print(tasks[1])
-    else:
-        print(f"No task found with ID {task_id}")
+    for task_id in task_ids:
+        tasks = client.list_tasks(TaskFieldFilter.TASK_ID == task_id)
+        if len(tasks[1]) > 0:
+            print(f"\nTask information for task ID {task_id} :\n")
+            print(tasks[1])
+        else:
+            print(f"No task found with ID {task_id}")
 
 
 
@@ -144,7 +145,7 @@ def main():
  
     
     list_task_parser = subparsers.add_parser('list-task', help='List tasks with specific filters')
-    list_task_parser.add_argument("--session", dest="session_id", nargs="+", help="Select ID from SESSION", required=True)
+    list_task_parser.add_argument(dest="session_id", nargs="+", help="Select ID from SESSION")
 
     group_list_task = list_task_parser.add_mutually_exclusive_group(required=True)
     group_list_task.add_argument("--all", dest="all", action="store_true", help="Select all tasks")
@@ -153,14 +154,13 @@ def main():
     group_list_task.set_defaults(func=lambda args: list_tasks(task_client, create_task_filter(args.session_id, args.all, args.creating, args.error)))
 
     check_task_parser = subparsers.add_parser('check-task', help='Check the status of a specific task')
-    check_task_parser.add_argument("--task", dest="task_id", help="Select ID from TASK", required=True)
-    check_task_parser.set_defaults(func=lambda args: check_task(task_client, args.task_id))
+    check_task_parser.add_argument(dest="task_ids", nargs="+",  help="Select ID from TASK")
+    check_task_parser.set_defaults(func=lambda args: check_task(task_client, args.task_ids))
 
 
     cancel_session_parser = subparsers.add_parser('cancel-session', help='Cancel sessions')
-    group_cancel_session = cancel_session_parser.add_mutually_exclusive_group(required=True)
-    group_cancel_session.add_argument("--session", dest="session_id", nargs="+", help="Session IDs to cancel")
-    group_cancel_session.set_defaults(func=lambda args: cancel_sessions(session_client, args.session_id))
+    cancel_session_parser.add_argument(dest="session_ids", nargs="+", help="Session IDs to cancel")
+    cancel_session_parser.set_defaults(func=lambda args: cancel_sessions(session_client, args.session_ids))
 
     args = parser.parse_args()
     grpc_channel = create_channel(args.endpoint)
