@@ -61,7 +61,7 @@ def cancel_sessions(client: ArmoniKSessions, sessions: list):
         client.cancel_session(session_id)
 
 
-def create_task_filter(session_ids: list, all: bool , creating: bool, error: bool) -> Filter:
+def create_task_filter(session_id: str, all: bool , creating: bool, error: bool) -> Filter:
     """
     Create a task Filter based on the provided options
 
@@ -74,17 +74,16 @@ def create_task_filter(session_ids: list, all: bool , creating: bool, error: boo
     Returns:
         Filter object
     """
-    for session_id in session_ids:
-        if all:
-            tasks_filter = TaskFieldFilter.SESSION_ID == session_id
-        elif creating:
-            tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_CREATING)
-        elif error:
-            tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_ERROR)
-        else:
-             raise ValueError("SELECT ARGUMENT [--all | --creating | --error]")
+    if all:
+        tasks_filter = TaskFieldFilter.SESSION_ID == session_id
+    elif creating:
+        tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_CREATING)
+    elif error:
+        tasks_filter = (TaskFieldFilter.SESSION_ID == session_id) & (TaskFieldFilter.STATUS == TASK_STATUS_ERROR)
+    else:
+            raise ValueError("SELECT ARGUMENT [--all | --creating | --error]")
 
-        return tasks_filter
+    return tasks_filter
     
 
 def list_tasks(client: ArmoniKTasks, task_filter: Filter):
@@ -145,7 +144,7 @@ def main():
  
     
     list_task_parser = subparsers.add_parser('list-task', help='List tasks with specific filters')
-    list_task_parser.add_argument(dest="session_id", nargs="+", help="Select ID from SESSION")
+    list_task_parser.add_argument(dest="session_id", help="Select ID from SESSION")
 
     group_list_task = list_task_parser.add_mutually_exclusive_group(required=True)
     group_list_task.add_argument("--all", dest="all", action="store_true", help="Select all tasks")
