@@ -5,24 +5,28 @@ from armonik.client.tasks import ArmoniKTasks, TaskFieldFilter
 from armonik.common.enumwrapper import TASK_STATUS_ERROR, TASK_STATUS_CREATING , SESSION_STATUS_RUNNING, SESSION_STATUS_CANCELLED, SESSION_STATUS_UNSPECIFIED
 from armonik.common.filter import Filter
 
-def create_channel(channel_config):
+def create_channel(endpoint: str,  ca: str = None, cert: str = None , key: str = None) -> grpc.Channel:
     """
     Create a gRPC channel for communication with the ArmoniK control plane
 
     Args:
-        channel_config: Command-line arguments namespace
+        ca (str): CA file path for mutual TLS
+        cert (str): Certificate file path for mutual TLS
+        key (str): Private key file path for mutual TLS
+        endpoint (str): ArmoniK control plane endpoint
 
     Returns:
         grpc.Channel: gRPC channel for communication
     """
-    if (channel_config.ca != None and channel_config.cert != None and channel_config.key != None):
-        ca = open(channel_config.ca, 'rb').read()
-        cert = open(channel_config.cert, 'rb').read()
-        key = open(channel_config.key, 'rb').read()
-        credentials = grpc.ssl_channel_credentials(ca, key, cert)
-        return grpc.secure_channel(channel_config.endpoint, credentials)
+    if ca != None and cert != None and key!= None:
+        ca_data = open(ca, 'rb').read()
+        cert_data = open(cert, 'rb').read()
+        key_data = open(key, 'rb').read()
+        credentials = grpc.ssl_channel_credentials(ca_data, key_data, cert_data)
+        return grpc.secure_channel(endpoint, credentials)
     else:
-        return grpc.insecure_channel(channel_config.endpoint)
+        return grpc.insecure_channel(endpoint)
+
 
 
 def list_sessions(client: ArmoniKSessions, session_filter: Filter):
@@ -159,7 +163,7 @@ def main():
     group_cancel_session.set_defaults(func=lambda args: cancel_sessions(session_client, args.session_id))
 
     args = parser.parse_args()
-    grpc_channel = create_channel(args)
+    grpc_channel = create_channel(args.endpoint)
     task_client = ArmoniKTasks(grpc_channel)
     session_client = ArmoniKSessions(grpc_channel)
     args.func(args)
